@@ -10,6 +10,8 @@ The ability to post to Alma has a flag in the front-end that needs to be set to 
 
 
 ## Docker-compose
+### This was configured for docker desktop on a Mac (arm) however, you can set the change to Alpine for alternative alpine architectures in the first line of the [ldpjs Dockerfile](https://github.com/jimfhahn/marva-backend/blob/master/config/ldpjs/Dockerfile)
+
 ### To startup the backend services use 
 `docker compose up -d`
 
