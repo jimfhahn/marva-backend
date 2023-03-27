@@ -9,11 +9,9 @@ const simpleGit = require('simple-git')();
 const shellJs = require('shelljs');
 const crypto = require('crypto');
 
+
 const mongo = require('mongodb')
 const MongoClient = mongo.MongoClient;
-
-const { promisify } = require('util');
-const exec = promisify(require('child_process').exec)
 
 var recsStageByEid = {}
 var recsProdByEid = {}
@@ -22,12 +20,13 @@ var recsProdByEid = {}
 var recsStageByUser = {}
 var recsProdByUser = {}
 
-const MLUSER = process.env.MLUSER;
-const MLPASS = process.env.MLPASS;
-const MLUSERSTAGE = process.env.MLUSERSTAGE;
-const MLPASSSTAGE = process.env.MLPASSSTAGE;
-const STAGINGPOSTURL = process.env.STAGINGPOSTURL;
-const PRODUCTIONPOSTURL = process.env.PRODUCTIONPOSTURL;
+const MLUSER = '';
+const MLPASS = '';
+const MLUSERSTAGE = '';
+const MLPASSSTAGE = '';
+const STAGINGPOSTURL = 'https://api-na.hosted.exlibrisgroup.com/almaws/v1/bibs?from_nz_mms_id=&from_cz_mms_id=&normalization=&validate=false&override_warning=true&check_match=false&apikey=yourapikeyhere';
+const PRODUCTIONPOSTURL = '';
+
 
 let postLog = []
 
@@ -65,7 +64,7 @@ let ageLimitForAllRecords = 15 //days
 const uri = 'mongodb://mongo:27017/';
 MongoClient.connect(uri, function(err, client) {
 
-    const db = client.db('bfe2');
+    const db = client.db('ldp');
 
 
     // build an intial index
@@ -79,7 +78,7 @@ MongoClient.connect(uri, function(err, client) {
 
 
 
-    var cursor = db.collection('resourcesStaging').find({});
+    var cursor = db.collection('resources').find({});
 
  		cursor.forEach((doc)=>{
 
@@ -104,11 +103,11 @@ MongoClient.connect(uri, function(err, client) {
  		})
 
 
-    db.collection('resourcesStaging').watch().on('change', data => 
+    db.collection('resources').watch().on('change', data => 
     {
 
         // get the doc
-				db.collection('resourcesStaging').findOne({'_id':new mongo.ObjectID(data.documentKey['_id'])})
+				db.collection('resources').findOne({'_id':new mongo.ObjectID(data.documentKey['_id'])})
 				.then(function(doc) {
         if(!doc)
             throw new Error('No record found.');
@@ -138,7 +137,7 @@ MongoClient.connect(uri, function(err, client) {
 
 
 
-    var cursor = db.collection('resourcesProduction').find({});
+    var cursor = db.collection('resources').find({});
 
  		cursor.forEach((doc)=>{
 
@@ -162,11 +161,11 @@ MongoClient.connect(uri, function(err, client) {
  		})
 
 
-    db.collection('resourcesProduction').watch().on('change', data => 
+    db.collection('resources').watch().on('change', data => 
     {
 
         // get the doc
-				db.collection('resourcesProduction').findOne({'_id':new mongo.ObjectID(data.documentKey['_id'])})
+				db.collection('resources').findOne({'_id':new mongo.ObjectID(data.documentKey['_id'])})
 				.then(function(doc) {
         if(!doc)
             throw new Error('No record found.');
@@ -366,9 +365,9 @@ app.get('/reports/stats/:year/:quarter', function(request, response){
 
 	MongoClient.connect(uri, function(err, client) {
 
-		const db = client.db('bfe2');
+		const db = client.db('ldp');
 
-		var cursor = db.collection('resourcesProduction').find({});
+		var cursor = db.collection('resources').find({});
 		let all_users = {}
 		cursor.forEach((doc)=>{
 
@@ -512,13 +511,13 @@ app.post('/delete/:stage/:user/:eid', (request, response) => {
 
 	    MongoClient.connect(uri, function(err, db) {
 	        if (err) throw err;
-	        var dbo = db.db("bfe2");	    
+	        var dbo = db.db("ldp");	    
 	        if (err) throw err;	        
-			dbo.collection('resourcesStaging').findOne({'_id':new mongo.ObjectID(recsStageByEid[request.params.eid]._id)})
+			dbo.collection('resources').findOne({'_id':new mongo.ObjectID(recsStageByEid[request.params.eid]._id)})
 			.then(function(doc) {
 				if(!doc) throw new Error('No record found.');
 				doc.index.status='deleted'				
-				dbo.collection('resourcesStaging').updateOne(
+				dbo.collection('resources').updateOne(
 				    {'_id':new mongo.ObjectID(recsStageByEid[request.params.eid]._id)}, 
 				    { $set: doc }
 
@@ -545,13 +544,13 @@ app.post('/delete/:stage/:user/:eid', (request, response) => {
 		// POTENTAIL ERROR HERE, IF THE RECORD IS NOT iN THE recsProdByEid object becase it is > 2weeks
 	    MongoClient.connect(uri, function(err, db) {
 	        if (err) throw err;
-	        var dbo = db.db("bfe2");	    
+	        var dbo = db.db("ldp");	    
 	        if (err) throw err;	        
-			dbo.collection('resourcesProduction').findOne({'_id':new mongo.ObjectID(recsProdByEid[request.params.eid]._id)})
+			dbo.collection('resources').findOne({'_id':new mongo.ObjectID(recsProdByEid[request.params.eid]._id)})
 			.then(function(doc) {
 				if(!doc) throw new Error('No record found.');
 				doc.index.status='deleted'				
-				dbo.collection('resourcesProduction').updateOne(
+				dbo.collection('resources').updateOne(
 				    {'_id':new mongo.ObjectID(recsProdByEid[request.params.eid]._id)}, 
 				    { $set: doc }
 				    
@@ -573,7 +572,7 @@ app.post('/error/report', (request, response) => {
 
     MongoClient.connect(uri, function(err, db) {
         if (err) throw err;
-        var dbo = db.db("bfe2");
+        var dbo = db.db("ldp");
 
         // turn it back into a string for storage because mongo is fusssy about key IDs
         request.body.activeProfile = JSON.stringify(request.body.activeProfile)
@@ -588,149 +587,11 @@ app.post('/error/report', (request, response) => {
     });
 });
 
-
-app.get('/errordoc/:hash', (request, response) => {
-
-	let found = false
-	fs.readdirSync('/tmp/marva_error_reports/').forEach(file => {
-		if (request.params.hash == crypto.createHash('md5').update(file).digest("hex")){
-
-
-			let txt = fs.readFileSync('/tmp/marva_error_reports/'+file,{encoding:'utf8', flag:'r'})
-			if (fs.existsSync('/tmp/marva_error_reports/'+file.replace('.txt','.json'))){
-				txt = txt + '-------------------------------------\n'+fs.readFileSync('/tmp/marva_error_reports/'+file.replace('.txt','.json'),{encoding:'utf8', flag:'r'})
-			}
-
-
-			response.type('text/plain').status(200).send(txt);
-			found=true
-		}
-	})
-
-	if (!found){
-		response.status(404).send('not found')
-	}
-});
-
-app.get('/errorlog', (request, response) => {
-
-	let files = {}
-
-	fs.readdirSync('/tmp/marva_error_reports/').forEach(file => {
-	  let s = file.split('_')
-	  files[s[0]] = file
-	})
-
-	let keys = Object.keys(files).sort().reverse().slice(0, 50);
-
-	let names = {}
-	for (let k of keys){
-
-		names[crypto.createHash('md5').update(`${files[k]}`).digest("hex")] = files[k]
-
-	}
-
-
-	response.json(names)
-
-
-});
-
-app.post('/errorlog', (request, response) => {
-
-
-	if (!fs.existsSync('/tmp/marva_error_reports/')){
-		fs.mkdirSync('/tmp/marva_error_reports/');
-	}
-
-	let filename = request.body.filename.replace(/\//g,'')
-
-	fs.writeFileSync(`/tmp/marva_error_reports/${filename}`, request.body.log);
-	fs.writeFileSync(`/tmp/marva_error_reports/${filename.replace('.txt','.json')}`, request.body.profile);
-
-	response.status(200).send('ok');
-
-
-});
-
-
-
-app.get('/sourcelog/:hash', (request, response) => {
-
-	let found = false
-	fs.readdirSync('/tmp/marva_source_log/').forEach(file => {
-		if (request.params.hash == crypto.createHash('md5').update(file).digest("hex")){
-
-			response.type('text/plain').status(200).send(fs.readFileSync('/tmp/marva_source_log/'+file,{encoding:'utf8', flag:'r'}));
-			found=true
-		}
-	})
-
-	if (!found){
-		response.status(404).send('not found')
-	}
-});
-
-app.get('/sourcelog', (request, response) => {
-
-	let files = {}
-
-	fs.readdirSync('/tmp/marva_source_log/').forEach(file => {
-	  let s = file.split('_')
-	  files[s[0]] = file
-	})
-
-	let keys = Object.keys(files).sort().reverse().slice(0, 100);
-
-	let names = {}
-	for (let k of keys){
-
-		names[crypto.createHash('md5').update(`${files[k]}`).digest("hex")] = files[k]
-
-	}
-
-
-	response.json(names)
-
-
-});
-
-app.post('/sourcelog', (request, response) => {
-
-
-	if (!fs.existsSync('/tmp/marva_source_log/')){
-		fs.mkdirSync('/tmp/marva_source_log/');
-	}
-
-	let stamp = Math.floor(Date.now() / 1000)
-
-	let filename = `${stamp}_${request.body.eid}_${request.body.user}_${request.body.date}.xml`
-
-	fs.writeFileSync(`/tmp/marva_source_log/${filename}`, request.body.xml);
-
-	response.status(200).send('ok');
-
-
-});
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 app.get('/error/report', (request, response) => {
 
     MongoClient.connect(uri, function(err, db) {
         if (err) throw err;
-        var dbo = db.db("bfe2");
+        var dbo = db.db("ldp");
 		    var cursor = dbo.collection('errorReports').find({});
 		    let results = []
 		 		cursor.forEach((doc)=>{
@@ -756,7 +617,7 @@ app.get('/error/:errorId', (request, response) => {
 
     MongoClient.connect(uri, function(err, db) {
         if (err) throw err;
-        var dbo = db.db("bfe2");
+        var dbo = db.db("ldp");
 
 				dbo.collection('errorReports').findOne({'_id':new mongo.ObjectID(request.params.errorId)})
 				.then(function(doc) {
@@ -802,13 +663,7 @@ app.post('/publish/production', (request, response) => {
 	var name = request.body.name + ".rdf";
 	var rdfxml = request.body.rdfxml; 
 
-	let endpoint = "/controllers/ingest/bf-bib.xqy"
-
-	if (request.body.hub === true){
-		endpoint = "/controllers/ingest/bf-hub.xqy"		
-	}
-
-	var url = "https://" + PRODUCTIONPOSTURL.trim() + endpoint;
+	var url = PRODUCTIONPOSTURL.trim();
 	console.log('------')
 	console.log(request.body.rdfxml)
 	console.log('------')
@@ -831,10 +686,6 @@ app.post('/publish/production', (request, response) => {
 	    body: rdfxml,
 	    resolveWithFullResponse: true,
 	    headers: { "Content-type": "application/xml" },
-	    auth: {
-	            'user': MLUSER,
-	            'pass': MLPASS,
-	        },
 	    json: false // Takes JSON as string and converts to Object
 	};
 	rp(options)
@@ -921,14 +772,8 @@ app.post('/publish/staging', (request, response) => {
 	var name = request.body.name + ".rdf";
 	var rdfxml = request.body.rdfxml; 
 
-	let endpoint = "/controllers/ingest/bf-bib.xqy"
 
-	if (request.body.hub === true){
-		endpoint = "/controllers/ingest/bf-hub.xqy"
-		console.log('using Hub END POInT')
-	}
-
-	var url = "https://" + STAGINGPOSTURL.trim() + endpoint;
+	var url = STAGINGPOSTURL.trim();
 	console.log('------')
 	console.log(request.body.rdfxml)
 	console.log('------')
@@ -952,10 +797,6 @@ app.post('/publish/staging', (request, response) => {
 	    body: rdfxml,
 	    resolveWithFullResponse: true,
 	    headers: { "Content-type": "application/xml" },
-	    auth: {
-	            'user': MLUSERSTAGE,
-	            'pass': MLPASSSTAGE,
-	        },
 	    json: false // Takes JSON as string and converts to Object
 	};
 	rp(options)
@@ -976,21 +817,20 @@ app.post('/publish/staging', (request, response) => {
 	        console.log(postResponse)
 	        let postStatus = {"status":"published"}
 
-	        if (postResponse.statusCode != 201 && postResponse.statusCode != 204 ){
+	        if (postResponse.statusCode != 200 ){
 	        	postStatus = {"status": "error","server": url, "message": postResponse.statusCode }
 	        }
 
-			let resp_data = {
+	        	let resp_data = {
                 name: request.body.name, 
-                // "url": resources + name, 
-                //"objid": data.objid, 
-                // "lccn": lccn, 
+                //url: resources + name, 
+                //objid: data.objid,  
                 publish: postStatus
             }
 	        
 
 	        response.set('Content-Type', 'application/json');
-	        response.status(200).send(resp_data);
+	        response.status(500).send(resp_data);
 	    })
 	    .catch(function (err) {
 	        // POST failed...
@@ -1077,7 +917,7 @@ app.get('/allrecords/:env/:searchval/:user', function(request, response){
 
 	MongoClient.connect(uri, function(err, client) {
 
-	    const db = client.db('bfe2');
+	    const db = client.db('ldp');
 
 		var searchCursor = db.collection(env).find({});
 
@@ -1229,7 +1069,7 @@ app.get('/dump/xml/prod', function(request, response){
 
 	MongoClient.connect(uri, function(err, client) {
 
-		const db = client.db('bfe2');
+		const db = client.db('ldp');
 
 		var cursor = db.collection('resourcesProduction').find({});
 		let all_users = {}
@@ -1323,647 +1163,6 @@ app.get('/dump/xml/prod', function(request, response){
 });
 
 
-
-// --- end points for templates / views
-// profile editor endpoints
-app.post('/templates', async (request, response) => {
-
-    MongoClient.connect(uri, async function(err, db) {
-        if (err) throw err;
-        var dbo = db.db("bfe2");
-
-        // find the key to update
-		let doc = await dbo.collection('templates').findOne({id: request.body.id})
-		if (doc){
-
-			dbo.collection('templates').updateOne(
-			    {'_id': new mongo.ObjectID(doc['_id'])}, 
-			    { $set: request.body }
-			);
-
-		}else{
-			console.log("creating")
-
-
-	        dbo.collection("templates").insertOne(request.body, 
-	        function(err, result) {
-	            if (err) {
-	            	console.log(err)
-	            }	            
-	        });
-		}
-
-		db.close();
-
-		// dbo.collection('profiles').collectionName.remove( { } )
-    });
-
-    return response.status(200).send("yeah :)")
-});
-
-
-app.get('/templates/:user', async (request, response) => {
-
-    MongoClient.connect(uri, async function(err, db) {
-        if (err) throw err;
-        var dbo = db.db("bfe2");
-
-        dbo.collection('templates').find({"user":request.params.user}).toArray(function(err, result) {
-
-            return response.status(200).json(result)
-            db.close();
-        });
-		db.close();
-    });   
-});
-
-
-app.get('/copytemplate/:user/:id', async (request, response) => {
-
-    MongoClient.connect(uri, async function(err, db) {
-        if (err) throw err;
-
-        var dbo = db.db("bfe2");
-
-		let id = request.params.id
-		let doc = await dbo.collection('templates').findOne({id: id})
-		if (doc){
-		
-
-
-			// remove the _id change the id and change the user name
-			delete doc['_id']
-			doc.id = crypto.createHash('md5').update(`${new Date().getTime().toString()}${request.params.user}`).digest("hex");
-			doc.user = request.params.user
-			doc.timestamp = new Date().getTime() / 1000
-
-			dbo.collection("templates").insertOne(doc, 
-			function(err, result) {
-			    if (err) {
-			    	console.log(err)
-			    	response.status(500).send("Could save copy of template")
-			    }
-			    return response.status(200).send("Template copied")			            
-			});
-
-
-
-			db.close();
-			
-			
-
-		}else{
-			response.status(500).send("Could not find that ID to copy")
-		}
-	
-
-	});
-
-
-});
-
-app.delete('/templates/:doc', async (request, response) => {
-
-
-    MongoClient.connect(uri, async function(err, db) {
-        if (err) throw err;
-
-        var dbo = db.db("bfe2");
-
-		let docName = request.params.doc
-		let doc = await dbo.collection('templates').findOne({id: docName})
-		if (doc){
-		
-			// remove the piece of the profile
-			dbo.collection('templates').deleteOne({_id: new mongo.ObjectID(doc['_id']) });
-		}else{
-			response.status(500).send("Could not find that ID to remove")
-		}
-	});
-
-	return response.status(200).send("yeah :)")
-	
-});
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// this is being rerouted from the profile editor
-
-
-
-const updateGit = async function(docName,env,jsonPayload){
-
-
-		
-
-	// otherMetadataKeys = [
-	// 	"index.resourceType:ontology",
-	// 	"index.resourceType:vocabulary",
-	// 	"index.resourceType:propertyTypes"
-	// ]
-
-
-  	// load the local deploy options
-	let config = JSON.parse(fs.readFileSync('util_config.json', 'utf8'));
-
-	if (config.profileEditPushGit){
-
-
-	    fs.rmSync('/tmp/profiles/', { recursive: true, force: true });
-
-	    await fs.promises.mkdir( '/tmp/profiles/' );
-	    await fs.promises.mkdir( '/tmp/profiles/' + `${docName}-${env}` );
-	    await fs.promises.mkdir( '/tmp/profiles/' + `${docName}-${env}/src` );
-
-	    let gitConfig = JSON.parse(fs.readFileSync('gitconfig.json', 'utf8'));
-
-	    let userName = gitConfig.userName
-	    let password = gitConfig.password
-	    let org = gitConfig.org
-	    let repo = gitConfig.repo
-
-	    const gitHubUrl = `https://${userName}:${password}@github.com/${org}/${repo}`;
-
-		await simpleGit.cwd({ path: '/tmp/profiles/', root: true });
-
-		await simpleGit.init()
-
-		await simpleGit.addRemote('origin',gitHubUrl);
-
-
-		await simpleGit.addConfig('user.email','ndmso@loc.gov');
-		await simpleGit.addConfig('user.name','NDMSO');
-		await simpleGit.pull('origin','main')
-		await simpleGit.checkout('main')
-
-
-	    // write out the file
-
-		fs.writeFileSync( `/tmp/profiles/${docName}-${env}/data.json` , JSON.stringify(jsonPayload,null,2))
-
-	    if (docName == 'profile' && jsonPayload){
-
-	    	for (let p of jsonPayload){
-	    		if (p.json && p.json.Profile){
-	    			fs.writeFileSync( `/tmp/profiles/${docName}-${env}/src/${p.json.Profile.id}.json` , JSON.stringify(p.json.Profile,null,2))
-	    		}
-
-
-	    		if (p.json && p.json.Profile && p.json.Profile.resourceTemplates){
-
-	    			for (let rt of p.json.Profile.resourceTemplates ){
-	    				console.log('wrotomg ',rt.id)
-						fs.writeFileSync( `/tmp/profiles/${docName}-${env}/src/${rt.id}.json` , JSON.stringify(rt,null,2))
-	    			}
-	    		}
-	    	}
-	    }
-
-
-		simpleGit.add('.')
-		.then(
-			(addSuccess) => {
-				console.log(addSuccess);
-				simpleGit.commit(`${docName}-${env} change`)
-					.then(
-						(successCommit) => {
-							console.log(successCommit);
-
-							simpleGit.push('origin','main')
-								.then((success) => {
-								   console.log('repo successfully pushed');
-								},(failed)=> {
-							       console.log(failed);
-								   console.log('repo push faileds');
-							});
-
-					}, (failed) => {
-						console.log(failed);
-						console.log('failed commmit');
-				});
-			}, (failedAdd) => {
-			  console.log(failedAdd)
-			  console.log('adding files failed');
-		});
-	}
-
-
-
-
-
-}
-
-
-
-app.get('/profiles/bootstrap', async (request, response) => {
-
-    MongoClient.connect(uri, async function(err, db) {
-        if (err) throw err;
-        var dbo = db.db("bfe2");
-
-
-		let config = JSON.parse(fs.readFileSync('util_config.json', 'utf8'));
-
-		if (config.bootstrapLinks){
-
-			let bootstrapResults = []
-			for(let id in config.bootstrapLinks){
-
-				var options = {
-				    method: 'GET',
-				    uri: config.bootstrapLinks[id],
-					headers: {
-					    "user-agent": "MARVA EDITOR"
-					 }
-				};
-
-		        let r = await rp.get(options)
-		        r = JSON.parse(r)
-
-				let doc = await dbo.collection('profiles').findOne({type: id})
-				if (doc){
-					dbo.collection('profiles').updateOne(
-					    {'_id': new mongo.ObjectID(doc['_id'])}, 
-					    { $set: {type:id, data:r} }
-					);
-
-				}else{
-			        dbo.collection("profiles").insertOne({type:id, data:r}, 
-			        function(err, result) {
-			            if (err) {
-			            	console.log(err)
-			            }			            
-			        });
-				}
-
-			}
-
-			response.status(200).send("Updated from bootstrap source.");
-
-		}else{
-
-			response.status(500).send("The bootstrap links were not found");
-
-		}
-				
-
-
-
-	});
-});
-
-
-
-app.get('/profiles/:doc', async (request, response) => {
-
-    MongoClient.connect(uri, async function(err, db) {
-        if (err) throw err;
-        var dbo = db.db("bfe2");
-
-        let env='prod'
-
-    	if (request.headers.referer && request.headers.referer.toLowerCase().indexOf('profile-editor-stage')>-1){
-    		env='stage'
-    	}
-        
-        let docName = request.params.doc
-
-        if (docName == 'index.resourceType:profile'){
-        	docName = 'profile'
-        }
-
-
-		let id = `${docName}-${env}`
-
-
-
-		let doc = await dbo.collection('profiles').findOne({type: id})
-		if (doc){
-			response.json(doc.data);
-			db.close();
-		}else{
-			response.status(404).json(null);
-		}
-	});
-});
-
-app.put('/profiles/:doc', async (request, response) => {
-
-
-    MongoClient.connect(uri, async function(err, db) {
-        if (err) throw err;
-
-        var dbo = db.db("bfe2");
-
-		let docName = request.params.doc
-
-		let env='prod'
-		if (request.headers.referer.toLowerCase().indexOf('profile-editor-stage')>-1){
-			env='stage'
-		}
-
-		let id = `${docName}-${env}`
-		let doc = await dbo.collection('profiles').findOne({type: id})
-		if (doc){
-			// response.json(doc.data);
-			// db.close();
-			// post the update to the document
-			dbo.collection('profiles').updateOne(
-			    {'_id': new mongo.ObjectID(doc['_id'])}, 
-			    { $set: {type:id, data:request.body} }
-			);
-
-			// and then find the main profile and update the part of it with the update part
-			let profileId = `profile-${env}`
-			let docMain = await dbo.collection('profiles').findOne({type: profileId})
-			if (docMain){
-
-				// find the id
-				for (let x in docMain.data){
-
-					if (docMain.data[x].id == docName){
-						console.log("updating")
-						docMain.data[x] = request.body
-						console.log(docMain.data[x])
-					}
-				}
-				console.log("docMain.data")
-				console.log(docMain.data)
-
-				dbo.collection('profiles').updateOne(
-				    {'_id': new mongo.ObjectID(docMain['_id'])}, 
-				    { $set: {type:profileId, data:docMain.data} }
-				);
-
-				await updateGit('profile',env,docMain.data)
-
-
-
-			}else{
-				response.status(500).send("Could not the main profile to update")
-			}
-
-
-
-		}else{
-			response.status(500).send("Could not find that ID to update")
-		}
-
-	});
-
-
-
-	return response.status(200).send("yeah :)")
-	
-});
-
-app.delete('/profiles/:doc', async (request, response) => {
-
-
-    MongoClient.connect(uri, async function(err, db) {
-        if (err) throw err;
-
-        var dbo = db.db("bfe2");
-
-		let docName = request.params.doc
-
-		let env='prod'
-		if (request.headers.referer.toLowerCase().indexOf('profile-editor-stage')>-1){
-			env='stage'
-		}
-
-		let id = `${docName}-${env}`
-		let doc = await dbo.collection('profiles').findOne({type: id})
-		if (doc){
-			
-			// remove the piece of the profile
-			dbo.collection('profiles').deleteOne({_id: new mongo.ObjectID(doc['_id']) });
-
-
-			// and then find in the main profile and remove it
-			let profileId = `profile-${env}`
-			let docMain = await dbo.collection('profiles').findOne({type: profileId})
-			if (docMain){
-
-				// filter out the part we want removed
-				docMain.data = docMain.data.filter((x)=>{ return (x.id != docName) })
-
-				dbo.collection('profiles').updateOne(
-				    {'_id': new mongo.ObjectID(docMain['_id'])}, 
-				    { $set: {type:profileId, data:docMain.data} }
-				);
-
-				// do the git stuff
-				await updateGit('profile',env,docMain.data)
-
-
-
-
-			}else{
-				response.status(500).send("Could not the main profile to update")
-			}
-
-
-
-		}else{
-			response.status(500).send("Could not find that ID to update")
-		}
-
-	});
-
-
-
-	return response.status(200).send("yeah :)")
-	
-});
-
-// this is for the /util/ interface        
-app.get('/profiles/:doc/:env', async (request, response) => {
-
-    MongoClient.connect(uri, async function(err, db) {
-        if (err) throw err;
-        var dbo = db.db("bfe2");
-
-
-		let id = `${request.params.doc}-${request.params.env}`
-		console.log("id = ",id)
-		let doc = await dbo.collection('profiles').findOne({type: id})
-		if (doc){
-			response.json(doc.data);
-			db.close();
-		}else{
-			response.json(null);
-		}
-	});
-});
-
-
-
-
-// profile editor endpoints
-app.post('/profiles/save/:doc/:env', async (request, response) => {
-
-
-	let env = 'stage'
-	let docName = 'profile'
-
-	if (request.params.env && request.params.env == 'prod'){
-		env = 'prod'
-	}
-	if (request.params.env && request.params.env != 'profile'){
-		docName = request.params.doc
-	}
-
-	let id = `${docName}-${env}`
-
-    MongoClient.connect(uri, async function(err, db) {
-        if (err) throw err;
-        var dbo = db.db("bfe2");
-
-
-        // find the key to update
-		let doc = await dbo.collection('profiles').findOne({type: id})
-		if (doc){
-			dbo.collection('profiles').updateOne(
-			    {'_id': new mongo.ObjectID(doc['_id'])}, 
-			    { $set: {type:id, data:request.body} }
-			);
-
-		}else{
-	        dbo.collection("profiles").insertOne({type:id, data:request.body}, 
-	        function(err, result) {
-	            if (err) {
-	            	console.log(err)
-	            }
-	            
-	        });
-		}
-
-
-		// we also populate the individual profiles from the main blob on inital load so do that
-		if (docName === 'profile'){
-
-			for (let p of request.body){
-				let id_sub = `${p.id}-${env}`
-				let doc = await dbo.collection('profiles').findOne({type: id_sub})
-				if (doc){
-					dbo.collection('profiles').updateOne(
-					    {'_id': new mongo.ObjectID(doc['_id'])}, 
-					    { $set: {type:id_sub, data:p} }
-					);
-				}else{
-			        dbo.collection("profiles").insertOne({type:id_sub, data:p}, 
-			        function(err, result) {
-			            if (err) {
-			            	console.log(err)
-			            }
-			        });
-				}
-
-			}
-
-
-
-		}
-
-
-
-		db.close();
-
-		// dbo.collection('profiles').collectionName.remove( { } )
-    });
-
-    // do the git stuff
-	await updateGit(docName,env,request.body)
-
-
-
-    return response.status(200).send("yeah :)")
-});
-
-
-
-// this is for the /util/ interface        
-app.get('/whichrt', async (request, response) => {
-
-	let uri = request.query.uri
-
-
-	if ( uri.indexOf('bibframe.example.org') > 0 ) {
-	    response.status(404).send();
-	} else {
-
-		var options = {
-		    method: 'GET',
-		    uri: uri,
-			headers: {
-			    "user-agent": "MARVA EDITOR"
-			 }
-
-
-		};
-		
-		rp(options)
-			 .then(function (r) {
-			 	
-			 	response.status(200).send(r);
-
-
-			 })
-			 .catch(function (err) {
-			 	console.log("-------------",uri)
-			 	console.log(err)
-			 	console.log("-------------")
-			 	response.status(500).send('Error fetching resource via whichrt.');
-			 })
-
-	}
-
-});
-
-
-app.post('/marcpreview', async (request, response) => {
-
-
-	var rdfxml = request.body.rdfxml; 
-
-	// write out the contents to a file
-	let tmpfilename = crypto.createHash('md5').update(new Date().getTime().toString()).digest("hex")
-	tmpfilename = `/tmp/${tmpfilename}.xml`
-	fs.writeFileSync( tmpfilename , request.body.rdfxml)
-
-	const xslts = fs.readdirSync('/app/lib/bibframe2marc/', {withFileTypes: true})
-	.filter(item => !item.isDirectory())
-	.map((item) => {
-		return {
-			fullPath: `/app/lib/bibframe2marc/${item.name}`,
-			version: item.name.split('_')[1].split('.xsl')[0]
-		}
-	})
-
-	let results = []
-
-	for (let xslt of xslts){
-		const marcxml = await exec(`xsltproc ${xslt.fullPath} ${tmpfilename}`)
-		results.push({'version':xslt.version, results: marcxml})
-	}
-
-	response.set('Content-Type', 'application/json');
-	response.status(200).json(results);
-
-});
 
 
 console.log('listending on 5200')

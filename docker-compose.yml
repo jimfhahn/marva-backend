@@ -5,7 +5,7 @@ services:
   util:
     build: 
       context: ./
-      dockerfile: config/util.docker
+      dockerfile: config/util/Dockerfile
     container_name: 'util'
     volumes:
       - ./util-service:/app
@@ -23,34 +23,32 @@ services:
       - MLUSER=""
       - MLPASS=""
       - EDITORVERSION=0.5.0
-    # ports:
-    #   - 5001:5001
+    ports:
+       - 5001:5001
 
   scriptshifter:
-    build: 
-      context: ./scriptshifter/
-      dockerfile: Dockerfile
+    image: jimfhahn/script-shifter:latest
     container_name: 'scriptshifter'
     volumes:
       - ./tmp:/tmp
     environment:
       - TXL_FLASK_SECRET=1234567890
-    # ports:
-    #  - 5003:8000
+    ports:
+      - 5003:8000
 
 
   util-lang:
     build: 
       context: ./
-      dockerfile: config/util-lang.docker
+      dockerfile: config/util-lang/Dockerfile
     container_name: 'util-lang'
     volumes:
       - ./util-lang:/app
       - ./tmp:/tmp
     environment:
       - PYTHONUNBUFFERED=1
-    #ports:
-    #  - 5002:7778
+    ports:
+      - 5002:7778
     
 
   database:
@@ -76,7 +74,7 @@ services:
   ldpjs-staging:
     build: 
       context: ./
-      dockerfile: config/ldpjs.docker
+      dockerfile: config/ldpjs/Dockerfile
     container_name: 'ldpjs-staging'
     depends_on:
       - 'database'    
@@ -86,13 +84,13 @@ services:
       - ./config/ldpjs_server_staging.js:/app/server.js # copy over our own
       - ./tmp:/app/tmp
       - ./config/ldpjs_startup.sh:/app/startup.sh
-    # ports:
-    #   - 9501:3000
+    ports:
+       - 9501:3000
 
   ldpjs-production:
     build: 
       context: ./
-      dockerfile: config/ldpjs.docker
+      dockerfile: config/ldpjs/Dockerfile
     container_name: 'ldpjs-production'
     depends_on:
       - 'database'    
@@ -102,8 +100,8 @@ services:
       - ./config/ldpjs_server_production.js:/app/server.js # copy over our own
       - ./tmp:/app/tmp
       - ./config/ldpjs_startup.sh:/app/startup.sh
-    # ports:
-    #   - 9501:3000
+    ports:
+       - 9502:3001
 
 
 

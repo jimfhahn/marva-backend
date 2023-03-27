@@ -1,4 +1,4 @@
-FROM adoptopenjdk/openjdk14:jre-14.0.2_12-alpine
+FROM arm32v6/openjdk:8-jre-alpine
 
 ENV JENA_VERSION apache-jena-3.17.0
 RUN mkdir /jena
@@ -12,9 +12,6 @@ RUN rmdir "$JENA_VERSION/"
 RUN rm "$JENA_VERSION.zip"
 
 ENV PATH $PATH:/jena/bin
-
-RUN riot  --version
-
 
 RUN apk add --update nodejs-current npm
 
