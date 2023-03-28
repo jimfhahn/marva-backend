@@ -1,5 +1,5 @@
 # marva-backend
-This repo is a [fork](https://github.com/lcnetdev/marva-backend) of the docker files and configuration for data persistence in the [Marva Editor](https://bibframe.org/) the Library of Congress BIBFRAME editor. After you've turned this on you'll want to start the [front-end](https://github.com/jimfhahn/marva-frontend/) next.
+This repo is a [fork](https://github.com/lcnetdev/marva-backend) of the docker files and configuration for data persistence in the [Marva](https://bibframe.org/) Library of Congress BIBFRAME editor. After you've turned this on you'll want to start the [front-end](https://github.com/jimfhahn/marva-frontend/) next.
 
 ## About this fork
 This fork re-organizes some of the configuration to dockerfiles into folders; and points to some pre-built images. It's all in the [docker-compose file](https://github.com/jimfhahn/marva-backend/blob/master/docker-compose.yml).
