@@ -5,7 +5,7 @@ This repo is a [fork](https://github.com/lcnetdev/marva-backend) of the docker f
 This fork re-organizes some of the configuration to dockerfiles into folders; and points to some pre-built images. It's all in the [docker-compose file](https://github.com/jimfhahn/marva-backend/blob/master/docker-compose.yml).
 The fork is also configured with some demonstration paths in the [util API](https://github.com/jimfhahn/marva-backend/blob/master/util-service/server.js) for those interested in posting to Alma or Alma Sandbox. 
 ## Alma API
-A note that the ExLibris create BIB endpoint for BIBFRAME is in (re)development and may change, so this marva-backend may be behind Alma ExLibris changes.
+A note that the ExLibris create BIB endpoint for BIBFRAME is in (re)development and may change, so this marva-backend may be out of date if Alma ExLibris updates the endpoint for posting BIBFRAME RDF/XML.
 
 The ability to post to Alma has a flag in the front-end that needs to be set to true for the Alma XML structure. The ALMA flag is in the [marva-frontend config file](https://github.com/jimfhahn/marva-frontend/blob/master/src/lib/config.js#L106)
 
