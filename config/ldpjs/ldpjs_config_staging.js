@@ -7,8 +7,8 @@ var createIndexDoc = function(version) {
 var config = {
     
     mongodb: {
-        conn: "mongodb://mongo:27017"    ,
-        db: "bfe2",
+        conn: "mongodb://mongo:27017",
+        db: "ldp",
         collection: "resourcesStaging"
     },
     

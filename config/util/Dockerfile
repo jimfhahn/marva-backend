@@ -6,4 +6,6 @@ RUN npm install -g forever nodemon @vue/cli @vue/cli-service-global grunt
 
 WORKDIR /app
 
+EXPOSE 5200
+
 ENTRYPOINT ["/app/startup.sh"]

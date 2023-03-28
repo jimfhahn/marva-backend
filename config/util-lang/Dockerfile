@@ -1,6 +1,5 @@
 FROM node:14.16.0-alpine3.12
 
-
 RUN apk update && apk add g++ make py3-pip supervisor ruby
 RUN npm install -g forever nodemon
 
@@ -21,6 +20,10 @@ RUN pip3 install flask
 COPY ../util-lang/service_script.conf .
 
 WORKDIR /app
+
+RUN npm install
+
+EXPOSE 7778
 
 CMD ["supervisord","-c","service_script.conf"]
 

@@ -258,5 +258,5 @@ app.post('/lang', async function(request, response){
 
 
 
-console.log('listending on 7778')
+console.log('listening on 7778')
 app.listen(7778);
