@@ -55,7 +55,7 @@ services:
     image: 'mongo:4.4.4'
     container_name: 'mongo' # give your contatner a name
     environment:
-      - MONGO_INITDB_DATABASE=bfe2 # database name you want to make
+      - MONGO_INITDB_DATABASE=ldp # database name you want to make
       # We don't need to define root stuff because we are not using auth in the db
       #- MONGO_INITDB_ROOT_USERNAME=bfe2 # set your container root username
       #- MONGO_INITDB_ROOT_PASSWORD=bfe2 # set your contatner root password
@@ -71,12 +71,12 @@ services:
 
 
   ldpjs-staging:
-    build: 
-       context: ./
-       dockerfile: config/ldpjs/Dockerfile
-    container_name: 'ldpjs-staging' 
+    image: jimfhahn/ldpjs:latest 
+    container_name: 'ldpjs-api'
     depends_on:
       - 'database'
+    working_dir: /home/node/app
+    command: ["node", "server.js"]
     ports:
-       - 5101:5101
+       - 3000:3000
 
