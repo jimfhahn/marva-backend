@@ -29,10 +29,6 @@ services:
   scriptshifter:
     image: jimfhahn/script-shifter:latest
     container_name: 'scriptshifter'
-    volumes:
-      - ./tmp:/tmp
-    environment:
-      - TXL_FLASK_SECRET=1234567890
     ports:
       - 5003:8000
 
