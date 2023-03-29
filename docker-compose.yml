@@ -77,6 +77,7 @@ services:
       - 'database'
     working_dir: /home/node/app
     command: ["node", "server.js"]
+    restart: always
     ports:
        - 3000:3000
 
